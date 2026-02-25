@@ -1,0 +1,137 @@
+[nltk_data] Error loading brown: <urlopen error [Errno -3] Temporary
+[nltk_data]     failure in name resolution>
+<class 'list'>
+['the', 'fulton', 'county', 'grand', 'jury', 'said', 'friday', 'an', 'investigation', 'of']
+970278
+20171
+(20171, 20171)
+(20171, 20171)
+279882
+536
+pair --> jury said
+Matrix value: 4.206501489824882 10
+pair --> the trial
+Matrix value: 1.0673380374661263 81
+Shape of U (Left singular vectors): (20171, 300)
+Shape of s (Singular values): (300,)
+Shape of Vt (Right singular vectors): (300, 20171)
+(20171, 300)
+
+============================================================
+COMPREHENSIVE FUNCTION TESTS
+============================================================
+
+--- Test 1: cosine_sim(w1, w2) ---
+Testing cosine similarity between word pairs:
+  cosine_sim('jury', 'trial') = 0.4777
+  cosine_sim('jury', 'said') = 0.0760
+  cosine_sim('the', 'a') = 0.6246
+  cosine_sim('court', 'case') = 0.3472
+  cosine_sim('said', 'said') = 1.0000
+
+--- Test 2: most_similar(word, topk=5) ---
+
+Most similar to 'trial':
+  jury: 0.4777
+  jelke: 0.4368
+  murder: 0.4267
+  testimony: 0.4108
+  court: 0.4081
+
+Most similar to 'jury':
+  trial: 0.4777
+  court: 0.4732
+  grand: 0.4615
+  police: 0.4441
+  magistrate: 0.4405
+
+Most similar to 'said':
+  told: 0.4287
+  i: 0.4091
+  asked: 0.3924
+  knew: 0.3914
+  you: 0.3771
+
+Most similar to 'court':
+  justices: 0.5800
+  fulton: 0.5364
+  federal: 0.5364
+  supreme: 0.4934
+  courts: 0.4849
+
+Most similar to 'case':
+  event: 0.4122
+  commission: 0.4093
+  point: 0.4026
+  purpose: 0.3965
+  cases: 0.3960
+
+--- Test 3: most_similar(word, topk) with different k values ---
+
+Top 3 most similar to 'trial':
+  jury: 0.4777
+  jelke: 0.4368
+  murder: 0.4267
+
+Top 5 most similar to 'trial':
+  jury: 0.4777
+  jelke: 0.4368
+  murder: 0.4267
+  testimony: 0.4108
+  court: 0.4081
+
+Top 10 most similar to 'trial':
+  jury: 0.4777
+  jelke: 0.4368
+  murder: 0.4267
+  testimony: 0.4108
+  court: 0.4081
+  hearing: 0.4079
+  sentence: 0.3845
+  case: 0.3746
+  bellows: 0.3666
+  month: 0.3587
+
+--- Test 4: analogy(a, b, c, topk=5) ---
+
+Analogy: jury:trial :: court:?
+  court: 0.8175
+  trial: 0.6972
+  justices: 0.5369
+  supreme: 0.4780
+  federal: 0.4672
+
+Analogy: said:asked :: told:?
+  asked: 0.2586
+  told: 0.2212
+  menshikov: 0.2137
+  sarah: 0.1989
+  farrell: 0.1959
+
+--- Test 5: analogy(a, b, c, topk) with different k values ---
+
+Analogy: jury:trial :: court:? (Top 3)
+  court: 0.8175
+  trial: 0.6972
+  justices: 0.5369
+
+Analogy: jury:trial :: court:? (Top 5)
+  court: 0.8175
+  trial: 0.6972
+  justices: 0.5369
+  supreme: 0.4780
+  federal: 0.4672
+
+Analogy: jury:trial :: court:? (Top 10)
+  court: 0.8175
+  trial: 0.6972
+  justices: 0.5369
+  supreme: 0.4780
+  federal: 0.4672
+  decision: 0.4607
+  court's: 0.4586
+  sentence: 0.4179
+  congress: 0.4055
+  courts: 0.4042
+
+============================================================
