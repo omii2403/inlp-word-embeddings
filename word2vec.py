@@ -1,4 +1,3 @@
-import argparse
 import copy
 import itertools
 import json
@@ -271,38 +270,21 @@ def train_with_early_stopping(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Skip-Gram + negative sampling + tuning")
-    parser.add_argument("--min_count", type=int, default=2)
-    parser.add_argument("--val_ratio", type=float, default=0.1)
-    parser.add_argument("--embedding_dims", type=str, default="100,200,300")
-    parser.add_argument("--window_sizes", type=str, default="2,4")
-    parser.add_argument("--negatives", type=str, default="5,10")
-    parser.add_argument("--learning_rates", type=str, default="0.001,0.003")
-    parser.add_argument("--batch_sizes", type=str, default="256,512,1024")
-    parser.add_argument("--tune_epochs", type=int, default=8)
-    parser.add_argument("--final_epochs", type=int, default=20)
-    parser.add_argument("--early_stop_patience", type=int, default=3)
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--output", type=str, default="embeddings/skipgram.pt")
-    parser.add_argument("--results_json", type=str, default="word2vec_tuning_results.json")
-    args = parser.parse_args()
-
-    set_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Using device:", device)
 
-    all_sentences, word2idx, idx2word, neg_sampling_dist = load_and_preprocess(args.min_count)
+    all_sentences, word2idx, idx2word, neg_sampling_dist = load_and_preprocess(4)
     print("Total indexed sentences:", len(all_sentences))
     print("Vocab size:", len(word2idx))
 
-    train_sentences, val_sentences = train_val_split(all_sentences, args.val_ratio, args.seed)
+    train_sentences, val_sentences = train_val_split(all_sentences, 0.1, 42)
     print("Train sentences:", len(train_sentences), "| Val sentences:", len(val_sentences))
 
-    embedding_dims = parse_int_list(args.embedding_dims)
-    window_sizes = parse_int_list(args.window_sizes)
-    negatives = parse_int_list(args.negatives)
-    learning_rates = parse_float_list(args.learning_rates)
-    batch_sizes = parse_int_list(args.batch_sizes)
+    embedding_dims = [100, 200, 300]
+    window_sizes = [2, 4]
+    negatives = [5, 10]
+    learning_rates = [0.001, 0.003]
+    batch_sizes = [256, 512]
 
     criterion = nn.BCEWithLogitsLoss()
     tuning_results = []
@@ -344,8 +326,8 @@ def main():
             neg_sampling_dist=neg_sampling_dist,
             k=k,
             device=device,
-            max_epochs=args.tune_epochs,
-            patience=args.early_stop_patience,
+            max_epochs=8,
+            patience=3
         )
 
         print(
@@ -407,11 +389,11 @@ def main():
         neg_sampling_dist=neg_sampling_dist,
         k=final_k,
         device=device,
-        max_epochs=args.final_epochs,
-        patience=args.early_stop_patience,
+        max_epochs=15,
+        patience=3,
     )
 
-    os.makedirs(os.path.dirname(args.output), exist_ok=True)
+    os.makedirs(os.path.dirname('embeddings/skipgram.pt'), exist_ok=True)
     vectors = final_model.in_embeddings.weight.detach().cpu()
 
     payload = {
@@ -425,19 +407,19 @@ def main():
         "final_epochs_run": final_epochs_run,
         "meta": {
             "model": "skipgram_negative_sampling",
-            "min_count": args.min_count,
-            "val_ratio": args.val_ratio,
-            "seed": args.seed,
+            "min_count": 5,
+            "val_ratio": 0.1,
+            "seed": 42,
             "preprocessing": "matched_to_word2vec_embedding_notebook",
         },
     }
 
-    torch.save(payload, args.output)
-    print(f"Saved embeddings to {args.output}")
+    torch.save(payload, 'embeddings/skipgram.pt')
+    print(f"Saved embeddings to embeddings/skipgram.pt")
 
-    with open(args.results_json, "w", encoding="utf-8") as f:
+    with open('word2vec_tuning_results.json', "w", encoding="utf-8") as f:
         json.dump({"best": best, "all_results": tuning_results}, f, indent=2)
-    print(f"Saved tuning results to {args.results_json}")
+    print(f"Saved tuning results to word2vec_tuning_results.json")
 
 
 if __name__ == "__main__":
