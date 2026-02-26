@@ -32,7 +32,7 @@ analogy_questions = [
 
 for emb_name, emb_path in embedding_files:
     print(f"\nLoading {emb_name} embeddings from {emb_path}...")
-    embeddings_data = torch.load(emb_path)
+    embeddings_data = torch.load(emb_path, weights_only=False)
     embeddings = embeddings_data['embeddings'].numpy()
     word_to_index = embeddings_data['word2idx']
     index_to_word = embeddings_data['idx2word']
@@ -153,7 +153,7 @@ for i, (a, b, c) in enumerate(analogy_examples):
     # for emb_name in ["SVD", "Word2Vec", "GloVe"]:
     for emb_name in ["SVD", "Word2Vec"]:
         # Use the correct embedding context
-        embeddings_data = torch.load(embedding_files[[x[0] for x in embedding_files].index(emb_name)][1])
+        embeddings_data = torch.load(embedding_files[[x[0] for x in embedding_files].index(emb_name)][1], weights_only=False)
         embeddings = embeddings_data['embeddings'].numpy()
         word_to_index = embeddings_data['word2idx']
         index_to_word = embeddings_data['idx2word']
