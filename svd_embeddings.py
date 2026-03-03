@@ -172,3 +172,5 @@ embeddings_dict = {
 output_path = "embeddings/svd.pt"
 torch.save(embeddings_dict, output_path)
 print(f"\nEmbeddings saved to {output_path}")
+
+# Best config: {'min_count': 4, 'context_window': 2, 'k_components': 300, 'rel_recon_error': np.float64(0.9080691800671397)}

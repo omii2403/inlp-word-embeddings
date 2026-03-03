@@ -6,7 +6,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 embedding_files = [
     ("SVD", 'embeddings/svd.pt'),
     ("Word2Vec", 'embeddings/skipgram.pt'),
-    # ("GloVe", 'embeddings/glove.pt'),
+    ("GloVe", 'embeddings/glove.pt'),
 ]
 
 results = {
@@ -16,18 +16,21 @@ results = {
 }
 
 test_pairs = [
-    ('jury', 'trial'),
-    ('jury', 'said'),
-    ('the', 'a'),
-    ('court', 'case'),
-    ('said', 'said'),
+    ('man', 'woman'),
+    ('good', 'bad'),
+    ('day', 'night'),
+    ('law', 'court'),
+    ('city', 'town'),
 ]
-test_words = ['trial', 'jury', 'said', 'court', 'case']
+test_words = ['man', 'woman', 'law', 'court', 'city']
 analogy_questions = [
-    ('man', 'woman', 'king'),
-    ('paris', 'france', 'london'),
-    ('jury', 'trial', 'court'),
-    ('said', 'asked', 'told'),
+    ('brother', 'sister', 'son'),
+    ('walk', 'walking', 'swim'),
+    ('good', 'better', 'bad'),
+    ('city', 'country', 'village'),
+    ('paris', 'france', 'delhi'),
+    ('king', 'man', 'queen'),
+    ('swim', 'swimming', 'run'),
 ]
 
 for emb_name, emb_path in embedding_files:
@@ -106,12 +109,11 @@ print("-" * 60)
 for idx in range(len(test_pairs)):
     w1, w2, svd_sim = results['cosine']['SVD'][idx]
     _, _, w2v_sim = results['cosine']['Word2Vec'][idx]
-    # _, _, glove_sim = results['cosine']['GloVe'][idx]
+    _, _, glove_sim = results['cosine']['GloVe'][idx]
     svd_str = f"{svd_sim:.4f}" if svd_sim is not None else "NOT IN VOCAB"
     w2v_str = f"{w2v_sim:.4f}" if w2v_sim is not None else "NOT IN VOCAB"
-    # glove_str = f"{glove_sim:.4f}" if glove_sim is not None else "NOT IN VOCAB"
-    # print(f"{w1} - {w2:<15} {svd_str:<12} {w2v_str:<12} {glove_str:<12}")
-    print(f"{w1} - {w2:<15} {svd_str:<12} {w2v_str:<12}")
+    glove_str = f"{glove_sim:.4f}" if glove_sim is not None else "NOT IN VOCAB"
+    print(f"{w1} - {w2:<15} {svd_str:<12} {w2v_str:<12} {glove_str:<12}")
 print("-" * 60)
 
 print("\n==================== MOST SIMILAR WORDS ====================")
@@ -120,9 +122,8 @@ print("-" * 130)
 for word in test_words:
     svd_sim = ', '.join([f"{w} ({s:.2f})" for w, s in results['most_similar']['SVD'][word]])
     w2v_sim = ', '.join([f"{w} ({s:.2f})" for w, s in results['most_similar']['Word2Vec'][word]])
-    # glove_sim = ', '.join([f"{w} ({s:.2f})" for w, s in results['most_similar']['GloVe'][word]])
-    # print(f"{word:<12} {svd_sim:<40} {w2v_sim:<40} {glove_sim:<40}")
-    print(f"{word:<12} {svd_sim:<40} {w2v_sim:<40}")
+    glove_sim = ', '.join([f"{w} ({s:.2f})" for w, s in results['most_similar']['GloVe'][word]])
+    print(f"{word:<12} {svd_sim:<40} {w2v_sim:<40} {glove_sim:<40}")
 print("-" * 130)
 
 print("\n==================== ANALOGY RESULTS ====================")
@@ -131,27 +132,31 @@ print("-" * 95)
 for key in results['analogy']['SVD'].keys():
     svd_ans = results['analogy']['SVD'][key]
     w2v_ans = results['analogy']['Word2Vec'][key]
-    # glove_ans = results['analogy']['GloVe'][key]
-    # print(f"{key:<35} {svd_ans:<20} {w2v_ans:<20} {glove_ans:<20}")
-    print(f"{key:<35} {svd_ans:<20} {w2v_ans:<20}")
+    glove_ans = results['analogy']['GloVe'][key]
+    print(f"{key:<35} {svd_ans:<20} {w2v_ans:<20} {glove_ans:<20}")
 print("-" * 95)
 
 # Task 2.1: Analogy Test (Top 5 for given examples)
 print("\n==================== ANALOGY TASK 2.1: TOP 5 WORDS ====================")
 analogy_examples = [
+    ("brother", "sister", "son"),
+    ("walk", "walking", "swim"),
+    ("good", "better", "bad"),
     ("paris", "france", "delhi"),
     ("king", "man", "queen"),
     ("swim", "swimming", "run"),
 ]
 analogy_labels = [
+    "Brother : Sister :: Son : ?",
+    "Walk : Walking :: Swim : ?",
+    "Good : Better :: Bad : ?",
     "Paris : France :: Delhi : ?",
     "King : Man :: Queen : ?",
     "Swim : Swimming :: Run : ?"
 ]
 for i, (a, b, c) in enumerate(analogy_examples):
     print(f"\n{analogy_labels[i]}")
-    # for emb_name in ["SVD", "Word2Vec", "GloVe"]:
-    for emb_name in ["SVD", "Word2Vec"]:
+    for emb_name in ["SVD", "Word2Vec", "GloVe"]:
         # Use the correct embedding context
         embeddings_data = torch.load(embedding_files[[x[0] for x in embedding_files].index(emb_name)][1], weights_only=False)
         embeddings = embeddings_data['embeddings'].numpy()
@@ -179,27 +184,26 @@ for i, (a, b, c) in enumerate(analogy_examples):
         print(f"  {emb_name:<8}: {top5_str}")
 
 # Task 2.2: Bias Check (GloVe only)
-# print("\n==================== BIAS CHECK (GloVe only) ====================")
-# glove_data = torch.load(embedding_files[[x[0] for x in embedding_files].index("GloVe")][1])
-# glove_emb = glove_data['embeddings'].numpy()
-# glove_word2idx = glove_data['word2idx']
-# def glove_cosine(w1, w2):
-#     if w1 not in glove_word2idx or w2 not in glove_word2idx:
-#         return None
-#     idx1 = glove_word2idx[w1]
-#     idx2 = glove_word2idx[w2]
-#     emb1 = glove_emb[idx1].reshape(1, -1)
-#     emb2 = glove_emb[idx2].reshape(1, -1)
-#     return cosine_similarity(emb1, emb2)[0][0]
+print("\n==================== BIAS CHECK (GloVe only) ====================")
+glove_data = torch.load(embedding_files[[x[0] for x in embedding_files].index("GloVe")][1], weights_only=False)
+glove_emb = glove_data['embeddings'].numpy()
+glove_word2idx = glove_data['word2idx']
+def glove_cosine(w1, w2):
+    if w1 not in glove_word2idx or w2 not in glove_word2idx:
+        return None
+    idx1 = glove_word2idx[w1]
+    idx2 = glove_word2idx[w2]
+    emb1 = glove_emb[idx1].reshape(1, -1)
+    emb2 = glove_emb[idx2].reshape(1, -1)
+    return cosine_similarity(emb1, emb2)[0][0]
 
 professions = ["doctor", "nurse", "homemaker"]
 pairs = [("man", "woman")]
 for prof in professions:
     for g1, g2 in pairs:
-        # sim1 = glove_cosine(prof, g1)
-        # sim2 = glove_cosine(prof, g2)
-        # print(f"{prof.capitalize()} - {g1}: {sim1:.4f} | {prof.capitalize()} - {g2}: {sim2:.4f}")
-        pass
+        sim1 = glove_cosine(prof, g1)
+        sim2 = glove_cosine(prof, g2)
+        print(f"{prof.capitalize()} - {g1}: {sim1:.4f} | {prof.capitalize()} - {g2}: {sim2:.4f}")
 
 
 def cosine_sim(w1, w2):
@@ -259,11 +263,11 @@ print("=" * 60)
 print("\n--- Test 1: cosine_sim(w1, w2) ---")
 print("Testing cosine similarity between word pairs:")
 test_pairs = [
-    ('jury', 'trial'),
-    ('jury', 'said'),
-    ('the', 'a'),
-    ('court', 'case'),
-    ('said', 'said')
+    ('man', 'woman'),
+    ('good', 'bad'),
+    ('day', 'night'),
+    ('law', 'court'),
+    ('city', 'town')
 ]
 
 for w1, w2 in test_pairs:
@@ -273,7 +277,7 @@ for w1, w2 in test_pairs:
     else:
         print(f"  cosine_sim('{w1}', '{w2}') = NOT IN VOCAB")
 print("\n--- Test 2: most_similar(word, topk=5) ---")
-test_words = ['trial', 'jury', 'said', 'court', 'case']
+test_words = ['man', 'woman', 'law', 'court', 'city']
 
 for word in test_words:
     print(f"\nMost similar to '{word}':")
@@ -281,7 +285,7 @@ for word in test_words:
     for i, (sim_word, sim_score) in enumerate(similar, 1):
         print(f"  {sim_word}: {sim_score:.4f}")
 print("\n--- Test 3: most_similar(word, topk) with different k values ---")
-word = 'trial'
+word = 'law'
 for k in [3, 5, 10]:
     print(f"\nTop {k} most similar to '{word}':")
     similar = most_similar(word, topk=k)
@@ -290,8 +294,9 @@ for k in [3, 5, 10]:
 
 print("\n--- Test 4: analogy(a, b, c, topk=5) ---")
 test_analogies = [
-    ('jury', 'trial', 'court'),
-    ('said', 'asked', 'told')
+    ('brother', 'sister', 'son'),
+    ('walk', 'walking', 'swim'),
+    ('paris', 'france', 'delhi')
 ]
 
 for a, b, c in test_analogies:
@@ -301,7 +306,7 @@ for a, b, c in test_analogies:
         print(f"  {word}: {score:.4f}")
 
 print("\n--- Test 5: analogy(a, b, c, topk) with different k values ---")
-a, b, c = 'jury', 'trial', 'court'
+a, b, c = 'brother', 'sister', 'son'
 for k in [3, 5, 10]:
     print(f"\nAnalogy: {a}:{b} :: {c}:? (Top {k})")
     results = analogy(a, b, c, topk=k)
