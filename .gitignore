@@ -3,3 +3,6 @@ A2_extracted.txt
 glove.6B.300d.txt
 .venv
 glove.pt
+pos_tagger_glove.pt
+pos_tagger_skipgram.pt
+pos_tagger_svd.pt
