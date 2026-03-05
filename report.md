@@ -6,6 +6,7 @@ Roll Number: `2025201008`
 
 ## Overview
 This report covers all following tasks:
+
 1. Training word embeddings with SVD and Word2Vec (Skip-Gram + negative sampling)
 
 2. Geometric/ethical analysis of SVD, Word2Vec, and pre-trained GloVe embeddings
@@ -148,7 +149,10 @@ Best per embedding:
 - SkipGram: `window=1, hidden=512, lr=0.001, batch=512, dropout=0.3, best_val_loss=0.1187`
 - SVD: `window=1, hidden=512, lr=0.001, batch=512, dropout=0.3, best_val_loss=0.1461`
 
+
+
 ### 3.4 Test performance
+
 | Embedding | Accuracy | Macro-F1 |
 |---|---:|---:|
 | GloVe | 0.9743 | 0.9409 |
@@ -157,7 +161,21 @@ Best per embedding:
 
 ### 3.5 Confusion matrix (best model: GloVe)
 
-![Confusion Matrix - Best POS Model (GloVe)](C:\Mtech\Sem_2\INLP\Assignment2\figures\confusion_matrix_glove.png)
+Tag order: `ADJ, ADP, ADV, CONJ, DET, NOUN, NUM, PRON, PRT, VERB, X`
+
+| True \ Pred | ADJ | ADP | ADV | CONJ | DET | NOUN | NUM | PRON | PRT | VERB | X |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| ADJ | 7320 | 3 | 101 | 0 | 0 | 295 | 0 | 0 | 2 | 61 | 0 |
+| ADP | 5 | 13950 | 64 | 10 | 32 | 5 | 0 | 6 | 84 | 14 | 2 |
+| ADV | 129 | 85 | 5057 | 13 | 15 | 40 | 0 | 1 | 38 | 36 | 0 |
+| CONJ | 0 | 1 | 3 | 3759 | 2 | 1 | 0 | 0 | 0 | 0 | 0 |
+| DET | 0 | 28 | 3 | 2 | 13539 | 4 | 0 | 32 | 0 | 1 | 0 |
+| NOUN | 268 | 2 | 11 | 0 | 8 | 25301 | 18 | 1 | 4 | 265 | 23 |
+| NUM | 0 | 0 | 0 | 0 | 0 | 7 | 681 | 0 | 0 | 0 | 0 |
+| PRON | 0 | 20 | 1 | 0 | 55 | 2 | 0 | 4774 | 1 | 2 | 0 |
+| PRT | 0 | 117 | 18 | 0 | 0 | 15 | 0 | 0 | 2581 | 5 | 0 |
+| VERB | 83 | 10 | 14 | 0 | 0 | 371 | 0 | 0 | 0 | 17352 | 1 |
+| X | 4 | 0 | 0 | 0 | 0 | 42 | 0 | 0 | 0 | 2 | 62 |
 
 The confusion matrix is strongly diagonal, which indicates the model predicts most tags correctly. The largest off-diagonal cells appear in linguistically close categories, especially `ADJ <-> NOUN`, `PRT -> ADP`, and `VERB -> NOUN`, showing the model mostly fails on boundary/ambiguity cases rather than random errors.
 
