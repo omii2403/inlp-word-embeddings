@@ -1,13 +1,17 @@
 import argparse
+import copy
+import itertools
 import json
 import os
 import random
 
+import matplotlib.pyplot as plt
 import nltk
 import numpy as np
+import seaborn as sns
 import torch
 import torch.nn as nn
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 from torch.utils.data import DataLoader, Dataset
 
 
@@ -19,6 +23,18 @@ config = {
     "glove_pt_path": "embeddings/glove.pt",
     "train_ratio": 0.8,
     "val_ratio": 0.1,
+    "window_sizes": [1, 2],
+    "hidden_sizes": [256, 512],
+    "learning_rates": [0.001, 0.003],
+    "batch_sizes": [256, 512],
+    "dropout": 0.3,
+    "tune_epochs": 10,
+    "final_epochs": 20,
+    "early_stop_patience": 3,
+    "output_dir": "embeddings",
+    "results_json": "pos_tuning_results.json",
+    "checkpoint_json": "pos_tuning_checkpoint.json",
+    "resume_from_checkpoint": True,
 }
 
 
@@ -61,6 +77,7 @@ def set_seed(seed):
 
 def convert_glove_txt_to_pt(txt_path, pt_path):
     if os.path.exists(pt_path):
+        print(f"glove.pt already exists at {pt_path}, skipping conversion")
         return
 
     if not os.path.exists(txt_path):
@@ -91,6 +108,7 @@ def convert_glove_txt_to_pt(txt_path, pt_path):
         },
         pt_path,
     )
+    print(f"Saved -> {pt_path} (vocab={len(word2idx)}, dim={emb_dim})")
 
 
 def load_pos_data(seed, train_ratio, val_ratio):
@@ -102,10 +120,7 @@ def load_pos_data(seed, train_ratio, val_ratio):
 
     filtered_sents = []
     for sent in tagged_sents:
-        filtered = []
-        for w, t in sent:
-            if w.isalpha():
-                filtered.append((w.lower(), t))
+        filtered = [(w.lower(), t) for w, t in sent if w.isalpha()]
         if filtered:
             filtered_sents.append(filtered)
 
@@ -121,13 +136,21 @@ def load_pos_data(seed, train_ratio, val_ratio):
     n_val = int(n * val_ratio)
 
     train_sents = [filtered_sents[i] for i in ids[:n_train]]
-    val_sents = [filtered_sents[i] for i in ids[n_train : n_train + n_val]]
-    test_sents = [filtered_sents[i] for i in ids[n_train + n_val :]]
+    val_sents = [filtered_sents[i] for i in ids[n_train:n_train + n_val]]
+    test_sents = [filtered_sents[i] for i in ids[n_train + n_val:]]
 
     print(f"Sentences -> train: {len(train_sents)} | val: {len(val_sents)} | test: {len(test_sents)}")
     print(f"Tags ({len(all_tags)}): {all_tags}")
 
     return train_sents, val_sents, test_sents, tag2idx, idx2tag
+
+
+def load_embedding_pt(path, name):
+    data = torch.load(path, map_location="cpu", weights_only=False)
+    vectors = data["embeddings"].numpy()
+    word2idx = data["word2idx"]
+    print(f"{name:<10}: vocab={len(word2idx):>7}, dim={vectors.shape[1]}")
+    return vectors, word2idx
 
 
 def build_embedding_matrix(vectors, word2idx, device):
@@ -161,6 +184,80 @@ def build_windows(sents, word2idx, tag2idx, window_size):
     return torch.LongTensor(all_windows), torch.LongTensor(all_tags)
 
 
+def run_epoch(model, loader, emb_matrix, optimizer, criterion, device, train_mode):
+    if train_mode:
+        model.train()
+    else:
+        model.eval()
+
+    total_loss = 0.0
+    total_batches = 0
+
+    with torch.set_grad_enabled(train_mode):
+        for windows, tags in loader:
+            windows = windows.to(device)
+            tags = tags.to(device)
+
+            x = emb_matrix[windows]
+            x = x.view(windows.size(0), -1)
+
+            logits = model(x)
+            loss = criterion(logits, tags)
+
+            if train_mode:
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+            total_loss += loss.item()
+            total_batches += 1
+
+    return total_loss / max(1, total_batches)
+
+
+def train_with_early_stopping(
+    model,
+    optimizer,
+    criterion,
+    train_loader,
+    val_loader,
+    emb_matrix,
+    device,
+    max_epochs,
+    patience,
+):
+    best_val = float("inf")
+    best_state = None
+    wait = 0
+    train_hist = []
+    val_hist = []
+
+    for epoch in range(max_epochs):
+        train_loss = run_epoch(model, train_loader, emb_matrix, optimizer, criterion, device, True)
+        val_loss = run_epoch(model, val_loader, emb_matrix, optimizer, criterion, device, False)
+
+        train_hist.append(train_loss)
+        val_hist.append(val_loss)
+
+        if val_loss < best_val:
+            best_val = val_loss
+            best_state = copy.deepcopy(model.state_dict())
+            wait = 0
+        else:
+            wait += 1
+
+        print(f"  Epoch {epoch + 1:>2}/{max_epochs} | train={train_loss:.4f} | val={val_loss:.4f}")
+
+        if wait >= patience:
+            print(f"  Early stopping at epoch {epoch + 1}")
+            break
+
+    if best_state is not None:
+        model.load_state_dict(best_state)
+
+    return train_hist, val_hist, best_val, len(train_hist)
+
+
 def evaluate(model, loader, emb_matrix, device):
     model.eval()
     all_preds = []
@@ -176,7 +273,285 @@ def evaluate(model, loader, emb_matrix, device):
 
     acc = accuracy_score(all_true, all_preds)
     f1 = f1_score(all_true, all_preds, average="macro")
-    return acc, f1
+    return acc, f1, all_true, all_preds
+
+
+def cfg_key(emb_name, window_size, hidden_size, lr, batch_size):
+    return f"{emb_name}|win={window_size}|h={hidden_size}|lr={lr}|bs={batch_size}"
+
+
+def save_checkpoint(path, results, best):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"all_results": results, "best": best}, f, indent=2)
+
+
+def load_checkpoint(path):
+    if not os.path.exists(path):
+        return [], None
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    return data.get("all_results", []), data.get("best", None)
+
+
+def recompute_best(results):
+    if not results:
+        return None
+    return min(results, key=lambda x: x["val_loss_best"])
+
+
+def train_full_pipeline():
+    set_seed(config["seed"])
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Device:", device)
+
+    train_sents, val_sents, test_sents, tag2idx, idx2tag = load_pos_data(
+        config["seed"], config["train_ratio"], config["val_ratio"]
+    )
+    num_tags = len(tag2idx)
+
+    convert_glove_txt_to_pt(config["glove_txt_path"], config["glove_pt_path"])
+
+    svd_vectors, svd_word2idx = load_embedding_pt(config["svd_path"], "SVD")
+    sg_vectors, sg_word2idx = load_embedding_pt(config["skipgram_path"], "SkipGram")
+    glove_vectors, glove_word2idx = load_embedding_pt(config["glove_pt_path"], "GloVe")
+
+    embeddings = {
+        "glove": (glove_vectors, glove_word2idx),
+        "svd": (svd_vectors, svd_word2idx),
+        "skipgram": (sg_vectors, sg_word2idx),
+    }
+
+    criterion = nn.CrossEntropyLoss()
+
+    if config["resume_from_checkpoint"]:
+        tuning_results, _ = load_checkpoint(config["checkpoint_json"])
+        if tuning_results:
+            print(f"Loaded checkpoint: {len(tuning_results)} completed configs")
+        else:
+            print("No checkpoint found, starting fresh")
+    else:
+        tuning_results = []
+
+    completed_keys = {
+        cfg_key(r["emb_name"], r["window_size"], r["hidden_size"], r["lr"], r["batch_size"])
+        for r in tuning_results
+    }
+
+    all_combos = list(
+        itertools.product(
+            config["window_sizes"],
+            config["hidden_sizes"],
+            config["learning_rates"],
+            config["batch_sizes"],
+        )
+    )
+
+    print(f"Configs per embedding: {len(all_combos)} | Total: {len(all_combos) * len(embeddings)}")
+
+    for emb_name, (vectors, word2idx) in embeddings.items():
+        emb_matrix = build_embedding_matrix(vectors, word2idx, device)
+        emb_dim = vectors.shape[1]
+
+        print("\n" + "=" * 55)
+        print(f"Tuning [{emb_name}] dim={emb_dim}")
+        print("=" * 55)
+
+        for window_size, hidden_size, lr, batch_size in all_combos:
+            key = cfg_key(emb_name, window_size, hidden_size, lr, batch_size)
+            if key in completed_keys:
+                print(f"  Skipping: {key}")
+                continue
+
+            print(f"\n  --- {key} ---")
+            train_w, train_t = build_windows(train_sents, word2idx, tag2idx, window_size)
+            val_w, val_t = build_windows(val_sents, word2idx, tag2idx, window_size)
+
+            train_loader = DataLoader(
+                POSDataset(train_w, train_t),
+                batch_size=batch_size,
+                shuffle=True,
+                drop_last=True,
+            )
+            val_loader = DataLoader(
+                POSDataset(val_w, val_t),
+                batch_size=batch_size,
+                shuffle=False,
+            )
+
+            input_size = (2 * window_size + 1) * emb_dim
+            model = MLPTagger(input_size, hidden_size, num_tags, config["dropout"]).to(device)
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+            train_hist, val_hist, best_val, epochs_run = train_with_early_stopping(
+                model,
+                optimizer,
+                criterion,
+                train_loader,
+                val_loader,
+                emb_matrix,
+                device,
+                config["tune_epochs"],
+                config["early_stop_patience"],
+            )
+
+            result = {
+                "emb_name": emb_name,
+                "window_size": window_size,
+                "hidden_size": hidden_size,
+                "lr": lr,
+                "batch_size": batch_size,
+                "dropout": config["dropout"],
+                "epochs_run": epochs_run,
+                "val_loss_best": best_val,
+                "train_loss_last": train_hist[-1],
+                "train_hist": train_hist,
+                "val_hist": val_hist,
+            }
+            tuning_results.append(result)
+            completed_keys.add(key)
+
+            best_per_emb = {
+                name: recompute_best([r for r in tuning_results if r["emb_name"] == name])
+                for name in embeddings
+            }
+            save_checkpoint(config["checkpoint_json"], tuning_results, best_per_emb)
+            with open(config["results_json"], "w", encoding="utf-8") as f:
+                json.dump({"best_per_emb": best_per_emb, "all_results": tuning_results}, f, indent=2)
+
+    best_per_emb = {
+        name: recompute_best([r for r in tuning_results if r["emb_name"] == name])
+        for name in embeddings
+    }
+
+    print("\nBest config per embedding:")
+    for name, b in best_per_emb.items():
+        print(
+            f"  [{name}] window={b['window_size']} hidden={b['hidden_size']} "
+            f"lr={b['lr']} bs={b['batch_size']} val_loss={b['val_loss_best']:.4f}"
+        )
+
+    os.makedirs(config["output_dir"], exist_ok=True)
+
+    final_models = {}
+    final_results = {}
+
+    for emb_name, (vectors, word2idx) in embeddings.items():
+        best = best_per_emb[emb_name]
+
+        best_window = best["window_size"]
+        best_hidden = best["hidden_size"]
+        best_lr = best["lr"]
+        best_bs = best["batch_size"]
+
+        print("\n" + "=" * 50)
+        print(f"Final training [{emb_name}] dim={vectors.shape[1]}")
+        print(f"  window={best_window} | hidden={best_hidden} | lr={best_lr} | bs={best_bs}")
+        print("=" * 50)
+
+        emb_matrix = build_embedding_matrix(vectors, word2idx, device)
+        emb_dim = vectors.shape[1]
+        input_size = (2 * best_window + 1) * emb_dim
+
+        train_w, train_t = build_windows(train_sents, word2idx, tag2idx, best_window)
+        val_w, val_t = build_windows(val_sents, word2idx, tag2idx, best_window)
+        test_w, test_t = build_windows(test_sents, word2idx, tag2idx, best_window)
+
+        train_loader = DataLoader(POSDataset(train_w, train_t), batch_size=best_bs, shuffle=True, drop_last=True)
+        val_loader = DataLoader(POSDataset(val_w, val_t), batch_size=best_bs, shuffle=False)
+        test_loader = DataLoader(POSDataset(test_w, test_t), batch_size=512, shuffle=False)
+
+        model = MLPTagger(input_size, best_hidden, num_tags, config["dropout"]).to(device)
+        optimizer = torch.optim.Adam(model.parameters(), lr=best_lr)
+
+        train_hist, val_hist, best_val, epochs_run = train_with_early_stopping(
+            model,
+            optimizer,
+            criterion,
+            train_loader,
+            val_loader,
+            emb_matrix,
+            device,
+            config["final_epochs"],
+            config["early_stop_patience"],
+        )
+
+        final_models[emb_name] = (model, emb_matrix, test_loader)
+        final_results[emb_name] = {
+            "val_loss": best_val,
+            "epochs_run": epochs_run,
+            "train_hist": train_hist,
+            "val_hist": val_hist,
+        }
+
+        out_path = os.path.join(config["output_dir"], f"pos_tagger_{emb_name}.pt")
+        torch.save(
+            {
+                "model_state": model.state_dict(),
+                "tag2idx": tag2idx,
+                "idx2tag": idx2tag,
+                "params": {
+                    "window_size": best_window,
+                    "hidden_size": best_hidden,
+                    "dropout": config["dropout"],
+                    "lr": best_lr,
+                    "batch_size": best_bs,
+                    "emb_dim": emb_dim,
+                    "input_size": input_size,
+                    "num_tags": num_tags,
+                },
+            },
+            out_path,
+        )
+        print(f"Saved -> {out_path}")
+
+    print(f"{'Embedding':<12} {'Accuracy':>10} {'Macro-F1':>10}")
+    print("-" * 35)
+
+    best_acc = -1.0
+    best_emb_name = None
+
+    for emb_name, (model, emb_matrix, test_loader) in final_models.items():
+        acc, f1, all_true, all_preds = evaluate(model, test_loader, emb_matrix, device)
+        final_results[emb_name]["accuracy"] = acc
+        final_results[emb_name]["macro_f1"] = f1
+        final_results[emb_name]["all_true"] = all_true
+        final_results[emb_name]["all_preds"] = all_preds
+        print(f"{emb_name:<12} {acc:>10.4f} {f1:>10.4f}")
+
+        if acc > best_acc:
+            best_acc = acc
+            best_emb_name = emb_name
+
+    print(f"\nBest model: {best_emb_name} (accuracy={best_acc:.4f})")
+
+    cm = confusion_matrix(
+        final_results[best_emb_name]["all_true"],
+        final_results[best_emb_name]["all_preds"],
+    )
+    tag_names = [idx2tag[i] for i in range(num_tags)]
+
+    os.makedirs("figures", exist_ok=True)
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(cm, annot=True, fmt="d", xticklabels=tag_names, yticklabels=tag_names, cmap="Blues")
+    plt.title(f"Confusion Matrix - {best_emb_name}")
+    plt.ylabel("True Label")
+    plt.xlabel("Predicted Label")
+    plt.tight_layout()
+    fig_path = os.path.join("figures", f"confusion_matrix_{best_emb_name}.png")
+    plt.savefig(fig_path, dpi=180)
+    print(f"Saved -> {fig_path}")
+
+    summary = {
+        "best_hyperparameters_per_emb": best_per_emb,
+        "test_results": {
+            emb: {k: v for k, v in r.items() if k not in ("all_true", "all_preds", "train_hist", "val_hist")}
+            for emb, r in final_results.items()
+        },
+    }
+
+    with open("final_results.json", "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+    print("Saved -> final_results.json")
 
 
 def predict_sentence(model, emb_matrix, word2idx, words, window_size, device):
@@ -294,17 +669,17 @@ def evaluate_pretrained(max_examples=5, report_path="pos_error_analysis.md"):
         tag2idx = {v: k for k, v in idx2tag.items()}
 
         model = MLPTagger(
-            input_size=int(params["input_size"]),
-            hidden_size=int(params["hidden_size"]),
-            num_tags=int(params["num_tags"]),
-            dropout=float(params["dropout"]),
+            int(params["input_size"]),
+            int(params["hidden_size"]),
+            int(params["num_tags"]),
+            float(params["dropout"]),
         ).to(device)
         model.load_state_dict(ckpt["model_state"])
 
         test_w, test_t = build_windows(test_sents, word2idx, tag2idx, int(params["window_size"]))
         test_loader = DataLoader(POSDataset(test_w, test_t), batch_size=512, shuffle=False)
 
-        acc, f1 = evaluate(model, test_loader, emb_matrix, device)
+        acc, f1, _, _ = evaluate(model, test_loader, emb_matrix, device)
         summary_rows.append((emb_name, acc, f1))
 
         examples = collect_error_examples(
@@ -365,19 +740,16 @@ def evaluate_pretrained(max_examples=5, report_path="pos_error_analysis.md"):
     with open(report_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines).strip() + "\n")
 
-    json_out = {
-        "metrics": [{"embedding": e, "accuracy": a, "macro_f1": f} for e, a, f in summary_rows],
-        "examples": all_examples,
-    }
     with open("pos_error_analysis.json", "w", encoding="utf-8") as f:
-        json.dump(json_out, f, indent=2)
+        json.dump({"metrics": summary_rows, "examples": all_examples}, f, indent=2)
 
     print(f"Saved report -> {report_path}")
     print("Saved json   -> pos_error_analysis.json")
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="POS pretrained evaluation + error analysis")
+    parser = argparse.ArgumentParser(description="POS tagger: train or evaluate pretrained models")
+    parser.add_argument("--mode", choices=["train", "eval-pretrained"], default="eval-pretrained")
     parser.add_argument("--max-examples", type=int, default=5)
     parser.add_argument("--report-path", type=str, default="pos_error_analysis.md")
     return parser.parse_args()
@@ -385,7 +757,11 @@ def parse_args():
 
 def main():
     args = parse_args()
-    evaluate_pretrained(max_examples=args.max_examples, report_path=args.report_path)
+
+    if args.mode == "train":
+        train_full_pipeline()
+    else:
+        evaluate_pretrained(max_examples=args.max_examples, report_path=args.report_path)
 
 
 if __name__ == "__main__":

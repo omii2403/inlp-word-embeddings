@@ -1,20 +1,20 @@
 {
   "metrics": [
-    {
-      "embedding": "glove",
-      "accuracy": 0.9743145028080608,
-      "macro_f1": 0.9409128693440812
-    },
-    {
-      "embedding": "skipgram",
-      "accuracy": 0.9629170796167823,
-      "macro_f1": 0.9106481546646578
-    },
-    {
-      "embedding": "svd",
-      "accuracy": 0.952665592996366,
-      "macro_f1": 0.8940657564838189
-    }
+    [
+      "glove",
+      0.9743145028080608,
+      0.9409128693440812
+    ],
+    [
+      "skipgram",
+      0.9629170796167823,
+      0.9106481546646578
+    ],
+    [
+      "svd",
+      0.952665592996366,
+      0.8940657564838189
+    ]
   ],
   "examples": {
     "glove": [
@@ -67,44 +67,6 @@
             "reason": "particle vs preposition confusion"
           }
         ]
-      },
-      {
-        "sentence": "in a raucous on radio commercials singer ray stevens hawks a for neuritis neuralgia distress beriberi overweight fungus mungus and water on the knee",
-        "mismatches": [
-          {
-            "word": "raucous",
-            "gold": "ADJ",
-            "pred": "NOUN",
-            "is_oov": false,
-            "reason": "adjective-noun ambiguity"
-          },
-          {
-            "word": "hawks",
-            "gold": "VERB",
-            "pred": "NOUN",
-            "is_oov": false,
-            "reason": "noun-verb ambiguity"
-          },
-          {
-            "word": "overweight",
-            "gold": "NOUN",
-            "pred": "ADJ",
-            "is_oov": false,
-            "reason": "adjective-noun ambiguity"
-          }
-        ]
-      },
-      {
-        "sentence": "pretty much hamburger hotdogs steak and at night maybe pizza says the handsome food expert",
-        "mismatches": [
-          {
-            "word": "much",
-            "gold": "ADJ",
-            "pred": "ADV",
-            "is_oov": false,
-            "reason": "adverb-adjective ambiguity"
-          }
-        ]
       }
     ],
     "skipgram": [
@@ -141,37 +103,6 @@
             "pred": "VERB",
             "is_oov": true,
             "reason": "likely unseen/OOV token"
-          }
-        ]
-      },
-      {
-        "sentence": "these responses are explicable in terms of characteristics inherent in the crisis",
-        "mismatches": [
-          {
-            "word": "characteristics",
-            "gold": "NOUN",
-            "pred": "ADJ",
-            "is_oov": false,
-            "reason": "adjective-noun ambiguity"
-          }
-        ]
-      },
-      {
-        "sentence": "a former du pont official became a general motors vice president and set about maximizing du share of the general motors market",
-        "mismatches": [
-          {
-            "word": "about",
-            "gold": "ADV",
-            "pred": "ADP",
-            "is_oov": false,
-            "reason": "short context window can miss syntax cues"
-          },
-          {
-            "word": "maximizing",
-            "gold": "VERB",
-            "pred": "NOUN",
-            "is_oov": false,
-            "reason": "noun-verb ambiguity"
           }
         ]
       }
@@ -231,30 +162,6 @@
             "pred": "NOUN",
             "is_oov": false,
             "reason": "noun-verb ambiguity"
-          }
-        ]
-      },
-      {
-        "sentence": "and dauntless by greentree adios in",
-        "mismatches": [
-          {
-            "word": "dauntless",
-            "gold": "ADJ",
-            "pred": "NOUN",
-            "is_oov": true,
-            "reason": "likely unseen/OOV token"
-          }
-        ]
-      },
-      {
-        "sentence": "these responses are explicable in terms of characteristics inherent in the crisis",
-        "mismatches": [
-          {
-            "word": "explicable",
-            "gold": "ADJ",
-            "pred": "NOUN",
-            "is_oov": false,
-            "reason": "adjective-noun ambiguity"
           }
         ]
       }

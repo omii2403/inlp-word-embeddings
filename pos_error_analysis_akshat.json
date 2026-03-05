@@ -1,0 +1,256 @@
+{
+  "metrics": [
+    {
+      "embedding": "glove",
+      "accuracy": 0.9830145603977475,
+      "macro_f1": 0.9661435445427496
+    },
+    {
+      "embedding": "skipgram",
+      "accuracy": 0.9757191415960631,
+      "macro_f1": 0.9303614061322757
+    },
+    {
+      "embedding": "svd",
+      "accuracy": 0.9690020800568211,
+      "macro_f1": 0.9196752979659109
+    }
+  ],
+  "examples": {
+    "glove": [
+      {
+        "sentence": "while he waited in the living room",
+        "mismatches": [
+          {
+            "word": "living",
+            "gold": "NOUN",
+            "pred": "VERB",
+            "is_oov": false,
+            "reason": "noun-verb ambiguity"
+          }
+        ]
+      },
+      {
+        "sentence": "it makes materials handling the only construction cost that like earthmoving and roadbuilding should be lower today than in",
+        "mismatches": [
+          {
+            "word": "that",
+            "gold": "PRON",
+            "pred": "DET",
+            "is_oov": false,
+            "reason": "short context window can miss syntax cues"
+          }
+        ]
+      },
+      {
+        "sentence": "it was plummer in fact who coined the much quoted remark green indeed writes as if he had been present at the landing of the saxons and had watched every step of their subsequent progress",
+        "mismatches": [
+          {
+            "word": "much",
+            "gold": "ADV",
+            "pred": "ADJ",
+            "is_oov": false,
+            "reason": "adverb-adjective ambiguity"
+          },
+          {
+            "word": "green",
+            "gold": "NOUN",
+            "pred": "ADJ",
+            "is_oov": false,
+            "reason": "adjective-noun ambiguity"
+          },
+          {
+            "word": "indeed",
+            "gold": "ADV",
+            "pred": "NOUN",
+            "is_oov": false,
+            "reason": "short context window can miss syntax cues"
+          },
+          {
+            "word": "present",
+            "gold": "ADV",
+            "pred": "ADJ",
+            "is_oov": false,
+            "reason": "adverb-adjective ambiguity"
+          }
+        ]
+      },
+      {
+        "sentence": "and george treadwell will be honored at a family week supper and program at sunday at trinity methodist church",
+        "mismatches": [
+          {
+            "word": "week",
+            "gold": "NOUN",
+            "pred": "ADJ",
+            "is_oov": false,
+            "reason": "adjective-noun ambiguity"
+          },
+          {
+            "word": "methodist",
+            "gold": "ADJ",
+            "pred": "NOUN",
+            "is_oov": false,
+            "reason": "adjective-noun ambiguity"
+          }
+        ]
+      },
+      {
+        "sentence": "he tried to tell the lady da but the words quite straight",
+        "mismatches": [
+          {
+            "word": "straight",
+            "gold": "ADV",
+            "pred": "ADJ",
+            "is_oov": false,
+            "reason": "adverb-adjective ambiguity"
+          }
+        ]
+      }
+    ],
+    "skipgram": [
+      {
+        "sentence": "while he waited in the living room",
+        "mismatches": [
+          {
+            "word": "living",
+            "gold": "NOUN",
+            "pred": "VERB",
+            "is_oov": false,
+            "reason": "noun-verb ambiguity"
+          }
+        ]
+      },
+      {
+        "sentence": "like most democratic spokesmen carvey predicts will be a tremendously partisan year",
+        "mismatches": [
+          {
+            "word": "predicts",
+            "gold": "VERB",
+            "pred": "NOUN",
+            "is_oov": true,
+            "reason": "likely unseen/OOV token"
+          }
+        ]
+      },
+      {
+        "sentence": "weil identifies it as being rootless guardini as being placeless riesman as being lonely",
+        "mismatches": [
+          {
+            "word": "rootless",
+            "gold": "ADJ",
+            "pred": "VERB",
+            "is_oov": true,
+            "reason": "likely unseen/OOV token"
+          },
+          {
+            "word": "placeless",
+            "gold": "ADJ",
+            "pred": "VERB",
+            "is_oov": true,
+            "reason": "likely unseen/OOV token"
+          }
+        ]
+      },
+      {
+        "sentence": "it was plummer in fact who coined the much quoted remark green indeed writes as if he had been present at the landing of the saxons and had watched every step of their subsequent progress",
+        "mismatches": [
+          {
+            "word": "plummer",
+            "gold": "NOUN",
+            "pred": "VERB",
+            "is_oov": true,
+            "reason": "likely unseen/OOV token"
+          },
+          {
+            "word": "much",
+            "gold": "ADV",
+            "pred": "ADJ",
+            "is_oov": false,
+            "reason": "adverb-adjective ambiguity"
+          }
+        ]
+      },
+      {
+        "sentence": "he tried to tell the lady da but the words quite straight",
+        "mismatches": [
+          {
+            "word": "straight",
+            "gold": "ADV",
+            "pred": "ADJ",
+            "is_oov": false,
+            "reason": "adverb-adjective ambiguity"
+          }
+        ]
+      }
+    ],
+    "svd": [
+      {
+        "sentence": "there was no sign of lauren payne at her house on nod road ridgefield connecticut",
+        "mismatches": [
+          {
+            "word": "payne",
+            "gold": "NOUN",
+            "pred": "VERB",
+            "is_oov": false,
+            "reason": "noun-verb ambiguity"
+          }
+        ]
+      },
+      {
+        "sentence": "while he waited in the living room",
+        "mismatches": [
+          {
+            "word": "living",
+            "gold": "NOUN",
+            "pred": "VERB",
+            "is_oov": false,
+            "reason": "noun-verb ambiguity"
+          }
+        ]
+      },
+      {
+        "sentence": "like most democratic spokesmen carvey predicts will be a tremendously partisan year",
+        "mismatches": [
+          {
+            "word": "predicts",
+            "gold": "VERB",
+            "pred": "NOUN",
+            "is_oov": true,
+            "reason": "likely unseen/OOV token"
+          }
+        ]
+      },
+      {
+        "sentence": "yet during the years when i was on the staff of the nation i tried to the limit the patience of the editors on almost every occasion when i was permitted to write an editorial having a bearing on a political or social question",
+        "mismatches": [
+          {
+            "word": "yet",
+            "gold": "CONJ",
+            "pred": "ADV",
+            "is_oov": false,
+            "reason": "short context window can miss syntax cues"
+          }
+        ]
+      },
+      {
+        "sentence": "weil identifies it as being rootless guardini as being placeless riesman as being lonely",
+        "mismatches": [
+          {
+            "word": "rootless",
+            "gold": "ADJ",
+            "pred": "VERB",
+            "is_oov": true,
+            "reason": "likely unseen/OOV token"
+          },
+          {
+            "word": "placeless",
+            "gold": "ADJ",
+            "pred": "VERB",
+            "is_oov": true,
+            "reason": "likely unseen/OOV token"
+          }
+        ]
+      }
+    ]
+  }
+}
